@@ -6,7 +6,7 @@
    control, and the data shuffler */
 
 #include "config.h"
-#include "xioconfig.h"	/* what features are enabled */
+#include "xioconfig.h" /* what features are enabled */
 
 #include "sysincludes.h"
 
@@ -28,28 +28,28 @@ struct {
    size_t bufsiz;
    bool verbose;
    bool verbhex;
-   struct timeval pollintv;	/* with ignoreeof, reread after seconds */
-   struct timeval closwait;	/* after close of x, die after seconds */
-   struct timeval total_timeout;/* when nothing happens, die after seconds */
+   struct timeval pollintv;      /* with ignoreeof, reread after seconds */
+   struct timeval closwait;      /* after close of x, die after seconds */
+   struct timeval total_timeout; /* when nothing happens, die after seconds */
    bool debug;
-   bool strictopts;	/* stop on errors in address options */
-   char logopt;		/* y..syslog; s..stderr; f..file; m..mixed */
-   bool lefttoright;	/* first addr ro, second addr wo */
-   bool righttoleft;	/* first addr wo, second addr ro */
-   xiolock_t lock;	/* a lock file */
+   bool strictopts;              /* stop on errors in address options */
+   char logopt;                  /* y..syslog; s..stderr; f..file; m..mixed */
+   bool lefttoright;             /* first addr ro, second addr wo */
+   bool righttoleft;             /* first addr wo, second addr ro */
+   xiolock_t lock;               /* a lock file */
 } socat_opts = {
-   8192,	/* bufsiz */
-   false,	/* verbose */
-   false,	/* verbhex */
-   {1,0},	/* pollintv */
-   {0,500000},	/* closwait */
-   {0,0},	/* total_timeout */
-   0,		/* debug */
-   0,		/* strictopts */
-   's',		/* logopt */
-   false,	/* lefttoright */
-   false,	/* righttoleft */
-   { NULL, 0 },	/* lock */
+   8192,        /* bufsiz */
+   false,       /* verbose */
+   false,       /* verbhex */
+   {1,0},       /* pollintv */
+   {0,500000},  /* closwait */
+   {0,0},       /* total_timeout */
+   0,           /* debug */
+   0,           /* strictopts */
+   's',         /* logopt */
+   false,       /* lefttoright */
+   false,       /* righttoleft */
+   { NULL, 0 }, /* lock */
 };
 
 void socat_usage(FILE *fd);
@@ -105,184 +105,237 @@ int main(int argc, const char *argv[]) {
    xiosetopt('p', "!!");
    xiosetopt('o', ":");
 
-   argc0 = argc;	/* save for later use */
+   argc0 = argc; /* save for later use */
    arg1 = argv+1;  --argc;
    while (arg1[0] && (arg1[0][0] == '-')) {
       switch (arg1[0][1]) {
-      case 'V':  if (arg1[0][2])  { socat_usage(stderr); Exit(1); }
-	 socat_version(stdout); Exit(0);
+      case 'V':
+         if (arg1[0][2]) {
+            socat_usage(stderr);
+            Exit(1);
+         }
+         socat_version(stdout);
+         Exit(0);
 #if WITH_HELP
       case '?':
       case 'h':
-	 socat_usage(stdout);
-	 xioopenhelp(stdout, (arg1[0][2]=='?'||arg1[0][2]=='h') ? (arg1[0][3]=='?'||arg1[0][3]=='h') ? 2 : 1 : 0);
-	 Exit(0);
+         socat_usage(stdout);
+         xioopenhelp(stdout, (arg1[0][2]=='?'||arg1[0][2]=='h') ? (arg1[0][3]=='?'||arg1[0][3]=='h') ? 2 : 1 : 0);
+         Exit(0);
 #endif /* WITH_HELP */
       case 'd':
-	 a = *arg1+1;
-	 while (*a)  {
-	    if (*a == 'd') {
-	       diag_set('d', NULL);
-	    } else {
-	       socat_usage(stderr);
-	       Exit(1);
-	    }
-	    ++a;
-	 }
-	 break;
+         a = *arg1+1;
+         while (*a)  {
+            if (*a == 'd') {
+               diag_set('d', NULL);
+            } else {
+               socat_usage(stderr);
+               Exit(1);
+            }
+         ++a;
+         }
+         break;
 #if WITH_FILAN
       case 'D':  if (arg1[0][2])  { socat_opt_hint(stderr, arg1[0][1], arg1[0][2]); Exit(1); }
-	 socat_opts.debug = true; break;
+         socat_opts.debug = true;
+         break;
 #endif
       case 'l':
-	 switch (arg1[0][2]) {
-	 case 'm': /* mixed mode: stderr, then switch to syslog; + facility */
-	    diag_set('s', NULL);
-	    xiosetopt('l', "m");
-	    socat_opts.logopt = arg1[0][2];
-	    xiosetopt('y', &arg1[0][3]);
-	    break;
-	 case 'y': /* syslog + facility */
-	    diag_set(arg1[0][2], &arg1[0][3]);
-	    break;
-	 case 'f': /* to file, +filename */
-	 case 'p': /* artificial program name */
-	    if (arg1[0][3]) {
-	       diag_set(arg1[0][2], &arg1[0][3]);
-	    } else if (arg1[1]) {
-	       diag_set(arg1[0][2], arg1[1]);
-	       ++arg1, --argc;
-	    } else {
-	       Error1("option -l%c requires an argument; use option \"-h\" for help", arg1[0][2]);
-	    }
-	    break;
-	 case 's': /* stderr */
-	    diag_set(arg1[0][2], NULL);
-	    break;
-	 case 'u':
-	    diag_set('u', NULL);
-	    break;
-	 case 'h':
-	    diag_set_int('h', true);
-	    break;
-	 default:
-	    Error1("unknown log option \"%s\"; use option \"-h\" for help", arg1[0]);
-	    break;
-	 }
-	 break;
-      case 'v':  if (arg1[0][2])  { socat_opt_hint(stderr, arg1[0][1], arg1[0][2]); Exit(1); }
-	 socat_opts.verbose = true; break;
-      case 'x':  if (arg1[0][2])  { socat_opt_hint(stderr, arg1[0][1], arg1[0][2]); Exit(1); }
-	 socat_opts.verbhex = true; break;
-      case 'b': if (arg1[0][2]) {
-	    a = *arg1+2;
-	 } else {
-	    ++arg1, --argc;
-	    if ((a = *arg1) == NULL) {
-	       Error("option -b requires an argument; use option \"-h\" for help");
-	       Exit(1);
-	    }
-	 }
-	 socat_opts.bufsiz = strtoul(a, (char **)&a, 0);
-	 break;
-      case 's':  if (arg1[0][2])  { socat_opt_hint(stderr, arg1[0][1], arg1[0][2]); Exit(1); }
-	 diag_set_int('e', E_FATAL); break;
-      case 't': if (arg1[0][2]) {
-	    a = *arg1+2;
-	 } else {
-	    ++arg1, --argc;
-	    if ((a = *arg1) == NULL) {
-	       Error("option -t requires an argument; use option \"-h\" for help");
-	       Exit(1);
-	    }
-	 }
-	 rto = strtod(a, (char **)&a);
-	 socat_opts.closwait.tv_sec = rto;
-	 socat_opts.closwait.tv_usec =
-	    (rto-socat_opts.closwait.tv_sec) * 1000000; 
-	 break;
-      case 'T':  if (arg1[0][2]) {
-	    a = *arg1+2;
-	 } else {
-	    ++arg1, --argc;
-	    if ((a = *arg1) == NULL) {
-	       Error("option -T requires an argument; use option \"-h\" for help");
-	       Exit(1);
-	    }
-	 }
-	 rto = strtod(a, (char **)&a);
-	 socat_opts.total_timeout.tv_sec = rto;
-	 socat_opts.total_timeout.tv_usec =
-	    (rto-socat_opts.total_timeout.tv_sec) * 1000000; 
-	 break;
-      case 'u':  if (arg1[0][2])  { socat_opt_hint(stderr, arg1[0][1], arg1[0][2]); Exit(1); }
-	 socat_opts.lefttoright = true; break;
-      case 'U':  if (arg1[0][2])  { socat_opt_hint(stderr, arg1[0][1], arg1[0][2]); Exit(1); }
-	 socat_opts.righttoleft = true; break;
-      case 'g':  if (arg1[0][2])  { socat_opt_hint(stderr, arg1[0][1], arg1[0][2]); Exit(1); }
-	 xioopts_ignoregroups = true; break;
-      case 'L': if (socat_opts.lock.lockfile)
-	     Error("only one -L and -W option allowed");
-	 if (arg1[0][2]) {
-	    socat_opts.lock.lockfile = *arg1+2;
-	 } else {
-	    ++arg1, --argc;
-	    if ((socat_opts.lock.lockfile = *arg1) == NULL) {
-	       Error("option -L requires an argument; use option \"-h\" for help");
-	       Exit(1);
-	    }
-	 }
-	 break;
-      case 'W': if (socat_opts.lock.lockfile)
-	    Error("only one -L and -W option allowed");
-	 if (arg1[0][2]) {
-	    socat_opts.lock.lockfile = *arg1+2;
-	 } else {
-	    ++arg1, --argc;
-	    if ((socat_opts.lock.lockfile = *arg1) == NULL) {
-	       Error("option -W requires an argument; use option \"-h\" for help");
-	       Exit(1);
-	    }
-	 }
-	 socat_opts.lock.waitlock = true;
-	 socat_opts.lock.intervall.tv_sec  = 1;
-	 socat_opts.lock.intervall.tv_nsec = 0;
-	 break;
+         switch (arg1[0][2]) {
+            case 'm': /* mixed mode: stderr, then switch to syslog; + facility */
+               diag_set('s', NULL);
+               xiosetopt('l', "m");
+               socat_opts.logopt = arg1[0][2];
+               xiosetopt('y', &arg1[0][3]);
+               break;
+            case 'y': /* syslog + facility */
+               diag_set(arg1[0][2], &arg1[0][3]);
+               break;
+            case 'f': /* to file, +filename */
+            case 'p': /* artificial program name */
+               if (arg1[0][3]) {
+                  diag_set(arg1[0][2], &arg1[0][3]);
+               } else if (arg1[1]) {
+                  diag_set(arg1[0][2], arg1[1]);
+                  ++arg1, --argc;
+               } else {
+                  Error1("option -l%c requires an argument; use option \"-h\" for help", arg1[0][2]);
+               }
+               break;
+            case 's': /* stderr */
+               diag_set(arg1[0][2], NULL);
+               break;
+            case 'u':
+               diag_set('u', NULL);
+               break;
+            case 'h':
+               diag_set_int('h', true);
+               break;
+            default:
+               Error1("unknown log option \"%s\"; use option \"-h\" for help", arg1[0]);
+               break;
+         }
+         break;
+         case 'v':
+            if (arg1[0][2]) {
+               socat_opt_hint(stderr, arg1[0][1], arg1[0][2]);
+               Exit(1);
+            }
+            socat_opts.verbose = true;
+            break;
+         case 'x':
+            if (arg1[0][2]) {
+               socat_opt_hint(stderr, arg1[0][1], arg1[0][2]);
+               Exit(1);
+            }
+            socat_opts.verbhex = true;
+            break;
+         case 'b':
+            if (arg1[0][2]) {
+               a = *arg1+2;
+            } else {
+               ++arg1, --argc;
+               if ((a = *arg1) == NULL) {
+                  Error("option -b requires an argument; use option \"-h\" for help");
+                  Exit(1);
+               }
+            }
+            socat_opts.bufsiz = strtoul(a, (char **)&a, 0);
+            break;
+         case 's':
+            if (arg1[0][2]) {
+               socat_opt_hint(stderr, arg1[0][1], arg1[0][2]);
+               Exit(1);
+            }
+            diag_set_int('e', E_FATAL);
+            break;
+         case 't':
+            if (arg1[0][2]) {
+               a = *arg1+2;
+            } else {
+               ++arg1, --argc;
+               if ((a = *arg1) == NULL) {
+                  Error("option -t requires an argument; use option \"-h\" for help");
+                  Exit(1);
+               }
+            }
+            rto = strtod(a, (char **)&a);
+            socat_opts.closwait.tv_sec = rto;
+            socat_opts.closwait.tv_usec =
+            (rto-socat_opts.closwait.tv_sec) * 1000000; 
+            break;
+         case 'T':
+            if (arg1[0][2]) {
+               a = *arg1+2;
+            } else {
+               ++arg1, --argc;
+               if ((a = *arg1) == NULL) {
+                  Error("option -T requires an argument; use option \"-h\" for help");
+                  Exit(1);
+               }
+            }
+            rto = strtod(a, (char **)&a);
+            socat_opts.total_timeout.tv_sec = rto;
+            socat_opts.total_timeout.tv_usec =
+            (rto-socat_opts.total_timeout.tv_sec) * 1000000; 
+            break;
+         case 'u':
+            if (arg1[0][2]) {
+               socat_opt_hint(stderr, arg1[0][1], arg1[0][2]);
+               Exit(1);
+            }
+            socat_opts.lefttoright = true;
+            break;
+         case 'U':
+            if (arg1[0][2]) {
+               socat_opt_hint(stderr, arg1[0][1], arg1[0][2]);
+               Exit(1);
+            }
+            socat_opts.righttoleft = true;
+            break;
+         case 'g':
+            if (arg1[0][2]) {
+               socat_opt_hint(stderr, arg1[0][1], arg1[0][2]);
+               Exit(1);
+            }
+            xioopts_ignoregroups = true;
+            break;
+         case 'L':
+            if (socat_opts.lock.lockfile) {
+               Error("only one -L and -W option allowed");
+            }
+            if (arg1[0][2]) {
+               socat_opts.lock.lockfile = *arg1+2;
+            } else {
+               ++arg1, --argc;
+               if ((socat_opts.lock.lockfile = *arg1) == NULL) {
+                  Error("option -L requires an argument; use option \"-h\" for help");
+                  Exit(1);
+               }
+            }
+            break;
+         case 'W':
+            if (socat_opts.lock.lockfile) {
+               Error("only one -L and -W option allowed");
+            }
+            if (arg1[0][2]) {
+               socat_opts.lock.lockfile = *arg1+2;
+            } else {
+               ++arg1, --argc;
+               if ((socat_opts.lock.lockfile = *arg1) == NULL) {
+                  Error("option -W requires an argument; use option \"-h\" for help");
+                  Exit(1);
+               }
+            }
+            socat_opts.lock.waitlock = true;
+            socat_opts.lock.intervall.tv_sec  = 1;
+            socat_opts.lock.intervall.tv_nsec = 0;
+            break;
 #if WITH_IP4 || WITH_IP6
 #if WITH_IP4
-      case '4':
+         case '4':
 #endif
 #if WITH_IP6
-      case '6':
+         case '6':
 #endif
-	 if (arg1[0][2])  { socat_opt_hint(stderr, arg1[0][1], arg1[0][2]); Exit(1); }
-	 xioopts.default_ip = arg1[0][1];
-	 xioopts.preferred_ip = arg1[0][1];
-	 break;
+            if (arg1[0][2]) {
+               socat_opt_hint(stderr, arg1[0][1], arg1[0][2]);
+               Exit(1);
+            }
+            xioopts.default_ip = arg1[0][1];
+            xioopts.preferred_ip = arg1[0][1];
+            break;
 #endif /* WITH_IP4 || WITH_IP6 */
-      case '\0':
-      case ',':
-      case ':': break;	/* this "-" is a variation of STDIO */
-      default:
-	 xioinqopt('p', buff, sizeof(buff));
-	 if (arg1[0][1] == buff[0]) {
-	    break;
-	 }
-	 Error1("unknown option \"%s\"; use option \"-h\" for help", arg1[0]);
-	 Exit(1);
+         case '\0':
+         case ',':
+         case ':':
+            break; /* this "-" is a variation of STDIO */
+         default:
+            xioinqopt('p', buff, sizeof(buff));
+            if (arg1[0][1] == buff[0]) {
+               break;
+            }
+            Error1("unknown option \"%s\"; use option \"-h\" for help", arg1[0]);
+            Exit(1);
       }
+
       /* the leading "-" might be a form of the first address */
       xioinqopt('p', buff, sizeof(buff));
       if (arg1[0][0] == '-' &&
-	  (arg1[0][1] == '\0' || arg1[0][1] == ':' ||
-	   arg1[0][1] == ',' || arg1[0][1] == buff[0]))
-	 break;
+          (arg1[0][1] == '\0' ||
+           arg1[0][1] == ':'  ||
+           arg1[0][1] == ','  ||
+           arg1[0][1] == buff[0])) {
+         break;
+      }
       ++arg1; --argc;
    }
+
    if (argc != 2) {
       Error1("exactly 2 addresses required (there are %d); use option \"-h\" for help", argc);
       Exit(1);
    }
+
    if (socat_opts.lefttoright && socat_opts.righttoleft) {
       Error("-U and -u must not be combined");
    }
@@ -294,10 +347,15 @@ int main(int argc, const char *argv[]) {
    Info(copyright_ssleay);
 #endif
    Debug2("socat version %s on %s", socatversion, timestamp);
-   xiosetenv("VERSION", socatversion, 1, NULL);	/* SOCAT_VERSION */
-   uname(&ubuf);	/* ! here we circumvent internal tracing (Uname) */
-   Debug4("running on %s version %s, release %s, machine %s\n",
-	   ubuf.sysname, ubuf.version, ubuf.release, ubuf.machine);
+   xiosetenv("VERSION", socatversion, 1, NULL); /* SOCAT_VERSION */
+   uname(&ubuf); /* ! here we circumvent internal tracing (Uname) */
+   Debug4(
+      "running on %s version %s, release %s, machine %s\n",
+      ubuf.sysname,
+      ubuf.version,
+      ubuf.release,
+      ubuf.machine
+   );
 
 #if WITH_MSGLEVEL <= E_DEBUG
    for (i = 0; i < argc0; ++i) {
@@ -328,8 +386,9 @@ int main(int argc, const char *argv[]) {
 
    if (lockrc = socat_lock()) {
       /* =0: goon; >0: locked; <0: error, printed in sub */
-      if (lockrc > 0)
-	 Error1("could not obtain lock \"%s\"", socat_opts.lock.lockfile);
+      if (lockrc > 0) {
+         Error1("could not obtain lock \"%s\"", socat_opts.lock.lockfile);
+      }
       Exit(1);
    }
 
@@ -338,7 +397,7 @@ int main(int argc, const char *argv[]) {
    result = socat(arg1[0], arg1[1]);
    Notice1("exiting with status %d", result);
    Exit(result);
-   return 0;	/* not reached, just for gcc -Wall */
+   return 0; /* not reached, just for gcc -Wall */
 }
 
 
@@ -384,8 +443,14 @@ void socat_usage(FILE *fd) {
 }
 
 void socat_opt_hint(FILE *fd, char a, char b) {
-   fprintf(fd, "Do not merge single character options, i.e. use \"-%c -%c\" instead of \"-%c%c\"\n",
-	   a, b, a, b);
+   fprintf(
+      fd,
+      "Do not merge single character options, i.e. use \"-%c -%c\" instead of \"-%c%c\"\n",
+      a,
+      b,
+      a,
+      b
+   );
 }
 
 
@@ -395,8 +460,14 @@ void socat_version(FILE *fd) {
    fputs(copyright_socat, fd); fputc('\n', fd);
    fprintf(fd, "socat version %s on %s\n", socatversion, timestamp);
    Uname(&ubuf);
-   fprintf(fd, "   running on %s version %s, release %s, machine %s\n",
-	   ubuf.sysname, ubuf.version, ubuf.release, ubuf.machine);
+   fprintf(
+      fd,
+      "   running on %s version %s, release %s, machine %s\n",
+      ubuf.sysname,
+      ubuf.version,
+      ubuf.release,
+      ubuf.machine
+   );
    fputs("features:\n", fd);
 #ifdef WITH_STDIO
    fprintf(fd, "  #define WITH_STDIO %d\n", WITH_STDIO);
@@ -559,8 +630,12 @@ void socat_version(FILE *fd) {
    fputs("  #undef WITH_RETRY\n", fd);
 #endif
 #ifdef WITH_MSGLEVEL
-   fprintf(fd, "  #define WITH_MSGLEVEL %d /*%s*/\n", WITH_MSGLEVEL,
-	   &"debug\0\0\0info\0\0\0\0notice\0\0warn\0\0\0\0error\0\0\0fatal\0\0\0"[WITH_MSGLEVEL<<3]);
+   fprintf(
+      fd,
+      "  #define WITH_MSGLEVEL %d /*%s*/\n",
+      WITH_MSGLEVEL,
+      &"debug\0\0\0info\0\0\0\0notice\0\0warn\0\0\0\0error\0\0\0fatal\0\0\0"[WITH_MSGLEVEL<<3]
+   );
 #else
    fputs("  #undef WITH_MSGLEVEL\n", fd);
 #endif
@@ -568,8 +643,9 @@ void socat_version(FILE *fd) {
 
 
 xiofile_t *sock1, *sock2;
-int closing = 0;	/* 0..no eof yet, 1..first eof just occurred,
-			   2..counting down closing timeout */
+
+int closing = 0; /* 0..no eof yet, 1..first eof just occurred,
+                    2..counting down closing timeout */
 
 /* call this function when the common command line options are parsed, and the
    addresses are extracted (but not resolved). */
@@ -578,48 +654,56 @@ int socat(const char *address1, const char *address2) {
 
    if (socat_opts.lefttoright) {
       if ((sock1 = xioopen(address1, XIO_RDONLY|XIO_MAYFORK|XIO_MAYCHILD|XIO_MAYCONVERT)) == NULL) {
-	 return -1;
+         return -1;
       }
       xiosetsigchild(sock1, socat_sigchild);
    } else if (socat_opts.righttoleft) {
       if ((sock1 = xioopen(address1, XIO_WRONLY|XIO_MAYFORK|XIO_MAYCHILD|XIO_MAYCONVERT)) == NULL) {
-	 return -1;
+         return -1;
       }
       xiosetsigchild(sock1, socat_sigchild);
    } else {
       if ((sock1 = xioopen(address1, XIO_RDWR|XIO_MAYFORK|XIO_MAYCHILD|XIO_MAYCONVERT)) == NULL) {
-	 return -1;
+         return -1;
       }
       xiosetsigchild(sock1, socat_sigchild);
    }
-#if 1	/*! */
+#if 1 /*! */
    if (XIO_READABLE(sock1) &&
        (XIO_RDSTREAM(sock1)->howtoend == END_KILL ||
-	XIO_RDSTREAM(sock1)->howtoend == END_CLOSE_KILL ||
-	XIO_RDSTREAM(sock1)->howtoend == END_SHUTDOWN_KILL)) {
+      XIO_RDSTREAM(sock1)->howtoend == END_CLOSE_KILL ||
+      XIO_RDSTREAM(sock1)->howtoend == END_SHUTDOWN_KILL)) {
       if (XIO_RDSTREAM(sock1)->para.exec.pid == diedunknown1) {
-	 /* child has alread died... but it might have put regular data into
-	    the communication channel, so continue */
-	 Info1("child "F_pid" has already died (diedunknown1)",
-	       XIO_RDSTREAM(sock1)->para.exec.pid);
-	 diedunknown1 = 0;
-	 XIO_RDSTREAM(sock1)->para.exec.pid = 0;
-	 /* return STAT_RETRYLATER; */
+         /* child has alread died... but it might have put regular data into
+            the communication channel, so continue */
+         Info1(
+            "child "F_pid" has already died (diedunknown1)",
+            XIO_RDSTREAM(sock1)->para.exec.pid
+         );
+         diedunknown1 = 0;
+         XIO_RDSTREAM(sock1)->para.exec.pid = 0;
+         /* return STAT_RETRYLATER; */
       } else if (XIO_RDSTREAM(sock1)->para.exec.pid == diedunknown2) {
-	 Info1("child "F_pid" has already died (diedunknown2)",
-	       XIO_RDSTREAM(sock1)->para.exec.pid);
-	 diedunknown2 = 0;
-	 XIO_RDSTREAM(sock1)->para.exec.pid = 0;
+         Info1(
+            "child "F_pid" has already died (diedunknown2)",
+	         XIO_RDSTREAM(sock1)->para.exec.pid
+         );
+         diedunknown2 = 0;
+         XIO_RDSTREAM(sock1)->para.exec.pid = 0;
       } else if (XIO_RDSTREAM(sock1)->para.exec.pid == diedunknown3) {
-	 Info1("child "F_pid" has already died (diedunknown3)",
-	       XIO_RDSTREAM(sock1)->para.exec.pid);
-	 diedunknown3 = 0;
-	 XIO_RDSTREAM(sock1)->para.exec.pid = 0;
+         Info1(
+            "child "F_pid" has already died (diedunknown3)",
+            XIO_RDSTREAM(sock1)->para.exec.pid
+         );
+         diedunknown3 = 0;
+         XIO_RDSTREAM(sock1)->para.exec.pid = 0;
       } else if (XIO_RDSTREAM(sock1)->para.exec.pid == diedunknown4) {
-	 Info1("child "F_pid" has already died (diedunknown4)",
-	       XIO_RDSTREAM(sock1)->para.exec.pid);
-	 diedunknown4 = 0;
-	 XIO_RDSTREAM(sock1)->para.exec.pid = 0;
+         Info1(
+            "child "F_pid" has already died (diedunknown4)",
+            XIO_RDSTREAM(sock1)->para.exec.pid
+         );
+         diedunknown4 = 0;
+         XIO_RDSTREAM(sock1)->para.exec.pid = 0;
       }
    }
 #endif
@@ -627,57 +711,66 @@ int socat(const char *address1, const char *address2) {
    mayexec = (sock1->common.flags&XIO_DOESCONVERT ? 0 : XIO_MAYEXEC);
    if (XIO_WRITABLE(sock1)) {
       if (XIO_READABLE(sock1)) {
-	 if ((sock2 = xioopen(address2, XIO_RDWR|XIO_MAYFORK|XIO_MAYCHILD|mayexec|XIO_MAYCONVERT)) == NULL) {
-	    return -1;
-	 }
-	 xiosetsigchild(sock2, socat_sigchild);
+         if ((sock2 = xioopen(address2, XIO_RDWR|XIO_MAYFORK|XIO_MAYCHILD|mayexec|XIO_MAYCONVERT)) == NULL) {
+            return -1;
+         }
+         xiosetsigchild(sock2, socat_sigchild);
       } else {
-	 if ((sock2 = xioopen(address2, XIO_RDONLY|XIO_MAYFORK|XIO_MAYCHILD|mayexec|XIO_MAYCONVERT)) == NULL) {
-	    return -1;
-	 }
-	 xiosetsigchild(sock2, socat_sigchild);
+         if ((sock2 = xioopen(address2, XIO_RDONLY|XIO_MAYFORK|XIO_MAYCHILD|mayexec|XIO_MAYCONVERT)) == NULL) {
+            return -1;
+         }
+         xiosetsigchild(sock2, socat_sigchild);
       }
-   } else {	/* assuming sock1 is readable */
+   } else { /* assuming sock1 is readable */
       if ((sock2 = xioopen(address2, XIO_WRONLY|XIO_MAYFORK|XIO_MAYCHILD|mayexec|XIO_MAYCONVERT)) == NULL) {
-	 return -1;
+         return -1;
       }
       xiosetsigchild(sock2, socat_sigchild);
    }
-#if 1	/*! */
+
+#if 1 /*! */
    if (XIO_READABLE(sock2) &&
        (XIO_RDSTREAM(sock2)->howtoend == END_KILL ||
-	XIO_RDSTREAM(sock2)->howtoend == END_CLOSE_KILL ||
-	XIO_RDSTREAM(sock2)->howtoend == END_SHUTDOWN_KILL)) {
+        XIO_RDSTREAM(sock2)->howtoend == END_CLOSE_KILL ||
+        XIO_RDSTREAM(sock2)->howtoend == END_SHUTDOWN_KILL)) {
       if (XIO_RDSTREAM(sock2)->para.exec.pid == diedunknown1) {
-	 /* child has alread died... but it might have put regular data into
-	    the communication channel, so continue */
-	 Info1("child "F_pid" has already died (diedunknown1)",
-	       XIO_RDSTREAM(sock2)->para.exec.pid);
-	 diedunknown1 = 0;
-	 XIO_RDSTREAM(sock2)->para.exec.pid = 0;
-	 /* return STAT_RETRYLATER; */
+         /* child has alread died... but it might have put regular data into
+            the communication channel, so continue */
+         Info1(
+            "child "F_pid" has already died (diedunknown1)",
+            XIO_RDSTREAM(sock2)->para.exec.pid
+         );
+         diedunknown1 = 0;
+         XIO_RDSTREAM(sock2)->para.exec.pid = 0;
+         /* return STAT_RETRYLATER; */
       } else if (XIO_RDSTREAM(sock2)->para.exec.pid == diedunknown2) {
-	 Info1("child "F_pid" has already died (diedunknown2)",
-	       XIO_RDSTREAM(sock2)->para.exec.pid);
-	 diedunknown2 = 0;
-	 XIO_RDSTREAM(sock2)->para.exec.pid = 0;
+         Info1(
+            "child "F_pid" has already died (diedunknown2)",
+            XIO_RDSTREAM(sock2)->para.exec.pid
+         );
+         diedunknown2 = 0;
+         XIO_RDSTREAM(sock2)->para.exec.pid = 0;
       } else if (XIO_RDSTREAM(sock2)->para.exec.pid == diedunknown3) {
-	 Info1("child "F_pid" has already died (diedunknown3)",
-	       XIO_RDSTREAM(sock2)->para.exec.pid);
-	 diedunknown3 = 0;
-	 XIO_RDSTREAM(sock2)->para.exec.pid = 0;
+         Info1(
+            "child "F_pid" has already died (diedunknown3)",
+            XIO_RDSTREAM(sock2)->para.exec.pid
+         );
+         diedunknown3 = 0;
+         XIO_RDSTREAM(sock2)->para.exec.pid = 0;
       } else if (XIO_RDSTREAM(sock2)->para.exec.pid == diedunknown4) {
-	 Info1("child "F_pid" has already died (diedunknown4)",
-	       XIO_RDSTREAM(sock2)->para.exec.pid);
-	 diedunknown4 = 0;
-	 XIO_RDSTREAM(sock2)->para.exec.pid = 0;
+         Info1(
+            "child "F_pid" has already died (diedunknown4)",
+            XIO_RDSTREAM(sock2)->para.exec.pid
+         );
+         diedunknown4 = 0;
+         XIO_RDSTREAM(sock2)->para.exec.pid = 0;
       }
    }
 #endif
 
    Info("resolved and opened all sock addresses");
    return 
-      _socat();	/* nsocks, sockets are visible outside function */
+      _socat(); /* nsocks, sockets are visible outside function */
 }
 
 /* checks if this is a connection to a child process, and if so, sees if the
@@ -693,45 +786,62 @@ int childleftdata(xiofile_t *xfd) {
    /* have to check if a child process died before, but left read data */
    if (XIO_READABLE(xfd) &&
        (XIO_RDSTREAM(xfd)->howtoend == END_KILL ||
-	XIO_RDSTREAM(xfd)->howtoend == END_CLOSE_KILL ||
-	XIO_RDSTREAM(xfd)->howtoend == END_SHUTDOWN_KILL) &&
+        XIO_RDSTREAM(xfd)->howtoend == END_CLOSE_KILL ||
+        XIO_RDSTREAM(xfd)->howtoend == END_SHUTDOWN_KILL) &&
        XIO_RDSTREAM(xfd)->para.exec.pid == 0) {
       struct timeval timeout = { 0, 0 };
 
       if (XIO_READABLE(xfd) && !(XIO_RDSTREAM(xfd)->eof >= 2 && !XIO_RDSTREAM(xfd)->ignoreeof)) {
-	 in.fd = XIO_GETRDFD(xfd);
-	 in.events = POLLIN/*|POLLRDBAND*/;
-	 in.revents = 0;
+         in.fd = XIO_GETRDFD(xfd);
+         in.events = POLLIN/*|POLLRDBAND*/;
+         in.revents = 0;
       }
-      do {
-	 int _errno;
-	 retval = xiopoll(&in, 1, &timeout);
-	 _errno = errno; diag_flush(); errno = _errno;	/* just in case it's not debug level and Msg() not been called */
+         do {
+            int _errno;
+            retval = xiopoll(&in, 1, &timeout);
+
+            /* just in case it's not debug level and Msg() not been called */
+            {
+               _errno = errno;
+               diag_flush();
+               errno = _errno;
+            }
       } while (retval < 0 && errno == EINTR);
 
       if (retval < 0) {
-	 Error5("xiopoll({%d,%0o}, 1, {"F_tv_sec"."F_tv_usec"}): %s",
-		in.fd, in.events, timeout.tv_sec, timeout.tv_usec,
-		strerror(errno));
-	 return -1;
+         Error5(
+            "xiopoll({%d,%0o}, 1, {"F_tv_sec"."F_tv_usec"}): %s",
+            in.fd,
+            in.events,
+            timeout.tv_sec,
+            timeout.tv_usec,
+            strerror(errno)
+         );
+         return -1;
       }
+
       if (retval == 0) {
-	 Info("terminated child did not leave data for us");
-	 XIO_RDSTREAM(xfd)->eof = 2;
-	 xfd->stream.eof = 2;
-	 closing = MAX(closing, 1);
+         Info("terminated child did not leave data for us");
+         XIO_RDSTREAM(xfd)->eof = 2;
+         xfd->stream.eof = 2;
+         closing = MAX(closing, 1);
       }
    }
    return 0;
 }
 
-int xiotransfer(xiofile_t *inpipe, xiofile_t *outpipe,
-		unsigned char **buff, size_t bufsiz, bool righttoleft);
+int xiotransfer(
+   xiofile_t *inpipe,
+   xiofile_t *outpipe,
+   unsigned char **buff,
+   size_t bufsiz,
+   bool righttoleft
+);
 
-bool mayrd1;		/* sock1 has read data or eof, according to poll() */
-bool mayrd2;		/* sock2 has read data or eof, according to poll() */
-bool maywr1;		/* sock1 can be written to, according to poll() */
-bool maywr2;		/* sock2 can be written to, according to poll() */
+bool mayrd1; /* sock1 has read data or eof, according to poll() */
+bool mayrd2; /* sock2 has read data or eof, according to poll() */
+bool maywr1; /* sock1 can be written to, according to poll() */
+bool maywr2; /* sock2 can be written to, according to poll() */
 
 /* here we come when the sockets are opened (in the meaning of C language),
    and their options are set/applied
@@ -745,36 +855,36 @@ int _socat(void) {
    int retval;
    unsigned char *buff;
    ssize_t bytes1, bytes2;
-   int polling = 0;	/* handling ignoreeof */
-   int wasaction = 1;	/* last poll was active, do NOT sleep before next */
-   struct timeval total_timeout;	/* the actual total timeout timer */
+   int polling = 0;              /* handling ignoreeof */
+   int wasaction = 1;            /* last poll was active, do NOT sleep before next */
+   struct timeval total_timeout; /* the actual total timeout timer */
 
 #if WITH_FILAN
    if (socat_opts.debug) {
       int fdi, fdo;
       int msglevel, exitlevel;
 
-      msglevel = diag_get_int('D');	/* save current message level */
-      diag_set_int('D', E_ERROR);	/* only print errors and fatals in filan */
-      exitlevel = diag_get_int('e');	/* save current exit level */
-      diag_set_int('e', E_FATAL);	/* only exit on fatals */
+      msglevel = diag_get_int('D');  /* save current message level */
+      diag_set_int('D', E_ERROR);    /* only print errors and fatals in filan */
+      exitlevel = diag_get_int('e'); /* save current exit level */
+      diag_set_int('e', E_FATAL);    /* only exit on fatals */
 
       fdi = XIO_GETRDFD(sock1);
       fdo = XIO_GETWRFD(sock1);
       filan_fd(fdi, stderr);
       if (fdo != fdi) {
-	 filan_fd(fdo, stderr);
+         filan_fd(fdo, stderr);
       }
 
       fdi = XIO_GETRDFD(sock2);
       fdo = XIO_GETWRFD(sock2);
       filan_fd(fdi, stderr);
       if (fdo != fdi) {
-	 filan_fd(fdo, stderr);
+         filan_fd(fdo, stderr);
       }
 
-      diag_set_int('e', exitlevel);	/* restore old exit level */
-      diag_set_int('D', msglevel);	/* restore old message level */
+      diag_set_int('e', exitlevel); /* restore old exit level */
+      diag_set_int('D', msglevel);  /* restore old message level */
    }
 #endif /* WITH_FILAN */
 
@@ -789,200 +899,236 @@ int _socat(void) {
    }
    total_timeout = socat_opts.total_timeout;
 
-   Notice4("starting data transfer loop with FDs [%d,%d] and [%d,%d]",
-	   XIO_GETRDFD(sock1), XIO_GETWRFD(sock1),
-	   XIO_GETRDFD(sock2), XIO_GETWRFD(sock2));
-   while (XIO_RDSTREAM(sock1)->eof <= 1 ||
-	  XIO_RDSTREAM(sock2)->eof <= 1) {
+   Notice4(
+      "starting data transfer loop with FDs [%d,%d] and [%d,%d]",
+      XIO_GETRDFD(sock1),
+      XIO_GETWRFD(sock1),
+      XIO_GETRDFD(sock2),
+      XIO_GETWRFD(sock2)
+   );
+
+   while (XIO_RDSTREAM(sock1)->eof <= 1 || XIO_RDSTREAM(sock2)->eof <= 1) {
       struct timeval timeout, *to = NULL;
 
-      Debug6("data loop: sock1->eof=%d, sock2->eof=%d, closing=%d, wasaction=%d, total_to={"F_tv_sec"."F_tv_usec"}",
-	     XIO_RDSTREAM(sock1)->eof, XIO_RDSTREAM(sock2)->eof,
-	     closing, wasaction,
-	     total_timeout.tv_sec, total_timeout.tv_usec);
+      Debug6(
+         "data loop: sock1->eof=%d, sock2->eof=%d, closing=%d, wasaction=%d, total_to={"F_tv_sec"."F_tv_usec"}",
+         XIO_RDSTREAM(sock1)->eof,
+         XIO_RDSTREAM(sock2)->eof,
+         closing,
+         wasaction,
+         total_timeout.tv_sec,
+         total_timeout.tv_usec
+      );
 
       /* for ignoreeof */
       if (polling) {
-	 if (!wasaction) {
-	    if (socat_opts.total_timeout.tv_sec != 0 ||
-		socat_opts.total_timeout.tv_usec != 0) {
-	       if (total_timeout.tv_usec < socat_opts.pollintv.tv_usec) {
-		  total_timeout.tv_usec += 1000000;
-		  total_timeout.tv_sec  -= 1;
-	       }
-	       total_timeout.tv_sec  -= socat_opts.pollintv.tv_sec;
-	       total_timeout.tv_usec -= socat_opts.pollintv.tv_usec;
-	       if (total_timeout.tv_sec < 0 ||
-		   total_timeout.tv_sec == 0 && total_timeout.tv_usec < 0) {
-		  Notice("inactivity timeout triggered");
-		  free(buff);
-		  return 0;
-	       }
-	    }
-
-	 } else {
-	    wasaction = 0;
-	 }
+         if (!wasaction) {
+            if (socat_opts.total_timeout.tv_sec != 0 ||
+                socat_opts.total_timeout.tv_usec != 0)
+            {
+               if (total_timeout.tv_usec < socat_opts.pollintv.tv_usec) {
+                  total_timeout.tv_usec += 1000000;
+                  total_timeout.tv_sec  -= 1;
+               }
+               total_timeout.tv_sec  -= socat_opts.pollintv.tv_sec;
+               total_timeout.tv_usec -= socat_opts.pollintv.tv_usec;
+               if (total_timeout.tv_sec < 0 ||
+                   total_timeout.tv_sec == 0 &&
+                   total_timeout.tv_usec < 0)
+               {
+                  Notice("inactivity timeout triggered");
+                  free(buff);
+                  return 0;
+               }
+            }
+         } else {
+            wasaction = 0;
+         }
       }
 
       if (polling) {
-	 /* there is a ignoreeof poll timeout, use it */
-	 timeout = socat_opts.pollintv;
-	 to = &timeout;
+         /* there is a ignoreeof poll timeout, use it */
+         timeout = socat_opts.pollintv;
+         to = &timeout;
       } else if (socat_opts.total_timeout.tv_sec != 0 ||
-		 socat_opts.total_timeout.tv_usec != 0) {
-	 /* there might occur a total inactivity timeout */
-	 timeout = socat_opts.total_timeout;
-	 to = &timeout;
+                 socat_opts.total_timeout.tv_usec != 0)
+      {
+         /* there might occur a total inactivity timeout */
+         timeout = socat_opts.total_timeout;
+         to = &timeout;
       } else {
-	 to = NULL;
+         to = NULL;
       }
 
       if (closing>=1) {
-	 /* first eof already occurred, start end timer */
-	 timeout = socat_opts.pollintv;
-	 to = &timeout;
-	 closing = 2;
+         /* first eof already occurred, start end timer */
+         timeout = socat_opts.pollintv;
+         to = &timeout;
+         closing = 2;
       }
 
       /* frame 1: set the poll parameters and loop over poll() EINTR) */
-      do {	/* loop over poll() EINTR */
-	 int _errno;
+      do { /* loop over poll() EINTR */
+         int _errno;
 
-	 childleftdata(sock1);
-	 childleftdata(sock2);
+         childleftdata(sock1);
+         childleftdata(sock2);
 
-	 if (closing>=1) {
-	    /* first eof already occurred, start end timer */
-	    timeout = socat_opts.closwait;
-	    to = &timeout;
-	    closing = 2;
-	 }
+         if (closing>=1) {
+            /* first eof already occurred, start end timer */
+            timeout = socat_opts.closwait;
+            to = &timeout;
+            closing = 2;
+         }
 
-	 /* use the ignoreeof timeout if appropriate */
-	 if (polling) {
-	    if (closing == 0 ||
-		(socat_opts.pollintv.tv_sec < timeout.tv_sec) ||
-		((socat_opts.pollintv.tv_sec == timeout.tv_sec) &&
-		 socat_opts.pollintv.tv_usec < timeout.tv_usec)) {
-	       timeout = socat_opts.pollintv;
-	    }
-	 }
+         /* use the ignoreeof timeout if appropriate */
+         if (polling) {
+            if (closing == 0 ||
+                (socat_opts.pollintv.tv_sec < timeout.tv_sec) ||
+                ((socat_opts.pollintv.tv_sec == timeout.tv_sec) &&
+                 (socat_opts.pollintv.tv_usec < timeout.tv_usec)))
+            {
+               timeout = socat_opts.pollintv;
+            }
+         }
 
-	 /* now the fds will be assigned */
-	 if (XIO_READABLE(sock1) &&
-	     !(XIO_RDSTREAM(sock1)->eof > 1 && !XIO_RDSTREAM(sock1)->ignoreeof) &&
-	     !socat_opts.righttoleft) {
-	    if (!mayrd1 && !(XIO_RDSTREAM(sock1)->eof > 1)) {
-		fd1in->fd = XIO_GETRDFD(sock1);
-		fd1in->events = POLLIN;
-	    } else {
-		fd1in->fd = -1;
-	    }
-	    if (!maywr2) {
-		fd2out->fd = XIO_GETWRFD(sock2);
-		fd2out->events = POLLOUT;
-	    } else {
-		fd2out->fd = -1;
-	    }
-	 } else {
-	     fd1in->fd = -1;
-	     fd2out->fd = -1;
-	 }
-	 if (XIO_READABLE(sock2) &&
-	     !(XIO_RDSTREAM(sock2)->eof > 1 && !XIO_RDSTREAM(sock2)->ignoreeof) &&
-	     !socat_opts.lefttoright) {
-	    if (!mayrd2 && !(XIO_RDSTREAM(sock2)->eof > 1)) {
-		fd2in->fd = XIO_GETRDFD(sock2);
-		fd2in->events = POLLIN;
-	    } else {
-		fd2in->fd = -1;
-	    }
-	    if (!maywr1) {
-		fd1out->fd = XIO_GETWRFD(sock1);
-		fd1out->events = POLLOUT;
-	    } else {
-		fd1out->fd = -1;
-	    }
-	 } else {
-	     fd1out->fd = -1;
-	     fd2in->fd = -1;
-	 }
-	 /* frame 0: innermost part of the transfer loop: check FD status */
-	 retval = xiopoll(fds, 4, to);
-	 if (retval >= 0 || errno != EINTR) {
-	    break;
-	 }
-	 _errno = errno;
-	 Info1("poll(): %s", strerror(errno));
-	 errno = _errno;
+         /* now the fds will be assigned */
+         if (XIO_READABLE(sock1) &&
+             !(XIO_RDSTREAM(sock1)->eof > 1 && !XIO_RDSTREAM(sock1)->ignoreeof) &&
+             !socat_opts.righttoleft)
+         {
+            if (!mayrd1 && !(XIO_RDSTREAM(sock1)->eof > 1)) {
+               fd1in->fd = XIO_GETRDFD(sock1);
+               fd1in->events = POLLIN;
+            } else {
+               fd1in->fd = -1;
+            }
+
+            if (!maywr2) {
+               fd2out->fd = XIO_GETWRFD(sock2);
+               fd2out->events = POLLOUT;
+            } else {
+               fd2out->fd = -1;
+            }
+         } else {
+            fd1in->fd = -1;
+            fd2out->fd = -1;
+         }
+
+         if (XIO_READABLE(sock2) &&
+             !(XIO_RDSTREAM(sock2)->eof > 1 && !XIO_RDSTREAM(sock2)->ignoreeof) &&
+             !socat_opts.lefttoright)
+         {
+            if (!mayrd2 && !(XIO_RDSTREAM(sock2)->eof > 1)) {
+               fd2in->fd = XIO_GETRDFD(sock2);
+               fd2in->events = POLLIN;
+            } else {
+               fd2in->fd = -1;
+            }
+
+            if (!maywr1) {
+               fd1out->fd = XIO_GETWRFD(sock1);
+               fd1out->events = POLLOUT;
+            } else {
+               fd1out->fd = -1;
+            }
+         } else {
+            fd1out->fd = -1;
+            fd2in->fd = -1;
+         }
+
+         /* frame 0: innermost part of the transfer loop: check FD status */
+         retval = xiopoll(fds, 4, to);
+         if (retval >= 0 || errno != EINTR) {
+            break;
+         }
+         _errno = errno;
+         Info1("poll(): %s", strerror(errno));
+         errno = _errno;
       } while (true);
 
       /* attention:
-	 when an exec'd process sends data and terminates, it is unpredictable
-	 whether the data or the sigchild arrives first.
-	 */
+       * when an exec'd process sends data and terminates, it is unpredictable
+       * whether the data or the sigchild arrives first.
+       */
 
       if (retval < 0) {
-	 Error11("xiopoll({%d,%0o}{%d,%0o}{%d,%0o}{%d,%0o}, 4, {"F_tv_sec"."F_tv_usec"}): %s",
-		 fds[0].fd, fds[0].events, fds[1].fd, fds[1].events,
-		 fds[2].fd, fds[2].events, fds[3].fd, fds[3].events,
-		 timeout.tv_sec, timeout.tv_usec, strerror(errno));
-		  free(buff);
-	    return -1;
+         Error11(
+            "xiopoll({%d,%0o}{%d,%0o}{%d,%0o}{%d,%0o}, 4, {"F_tv_sec"."F_tv_usec"}): %s",
+            fds[0].fd,
+            fds[0].events,
+            fds[1].fd,
+            fds[1].events,
+            fds[2].fd,
+            fds[2].events,
+            fds[3].fd,
+            fds[3].events,
+            timeout.tv_sec,
+            timeout.tv_usec,
+            strerror(errno)
+         );
+         free(buff);
+         return -1;
       } else if (retval == 0) {
-	 Info2("poll timed out (no data within %ld.%06ld seconds)",
-	       closing>=1?socat_opts.closwait.tv_sec:socat_opts.total_timeout.tv_sec,
-	       closing>=1?socat_opts.closwait.tv_usec:socat_opts.total_timeout.tv_usec);
-	 if (polling && !wasaction) {
-	    /* there was a ignoreeof poll timeout, use it */
-	    polling = 0;	/*%%%*/
-	    if (XIO_RDSTREAM(sock1)->ignoreeof) {
-	       mayrd1 = 0;
-	    }
-	    if (XIO_RDSTREAM(sock2)->ignoreeof) {
-	       mayrd2 = 0;
-	    }
-	 } else if (polling && wasaction) {
-	    wasaction = 0;
+         Info2(
+            "poll timed out (no data within %ld.%06ld seconds)",
+            closing >= 1 ? socat_opts.closwait.tv_sec : socat_opts.total_timeout.tv_sec,
+            closing >= 1 ? socat_opts.closwait.tv_usec : socat_opts.total_timeout.tv_usec
+         );
+         if (polling && !wasaction) {
+            /* there was a ignoreeof poll timeout, use it */
+            polling = 0; /*%%%*/
+            if (XIO_RDSTREAM(sock1)->ignoreeof) {
+               mayrd1 = 0;
+            }
+            if (XIO_RDSTREAM(sock2)->ignoreeof) {
+               mayrd2 = 0;
+            }
+         } else if (polling && wasaction) {
+            wasaction = 0;
+         } else if (socat_opts.total_timeout.tv_sec != 0 ||
+                    socat_opts.total_timeout.tv_usec != 0)
+         {
+            /* there was a total inactivity timeout */
+            Notice("inactivity timeout triggered");
+            free(buff);
+            return 0;
+         }
 
-	 } else if (socat_opts.total_timeout.tv_sec != 0 ||
-		    socat_opts.total_timeout.tv_usec != 0) {
-	    /* there was a total inactivity timeout */
-	    Notice("inactivity timeout triggered");
-		  free(buff);
-	    return 0;
-	 }
+         if (closing) {
+            break;
+         }
 
-	 if (closing) {
-	    break;
-	 }
-	 /* one possibility to come here is ignoreeof on some fd, but no EOF 
-	    and no data on any descriptor - this is no indication for end! */
-	 continue;
+         /* one possibility to come here is ignoreeof on some fd, but no EOF 
+         and no data on any descriptor - this is no indication for end! */
+         continue;
       }
 
       if (XIO_READABLE(sock1) && XIO_GETRDFD(sock1) >= 0 &&
-	  (fd1in->revents /*&(POLLIN|POLLHUP|POLLERR)*/)) {
-	 if (fd1in->revents & POLLNVAL) {
-	    /* this is what we find on Mac OS X when poll()'ing on a device or
-	       named pipe. a read() might imm. return with 0 bytes, resulting
-	       in a loop? */ 
-	    Error1("poll(...[%d]: invalid request", fd1in->fd);
-		  free(buff);
-	    return -1;
-	 }
-	 mayrd1 = true;
+          (fd1in->revents /*&(POLLIN|POLLHUP|POLLERR)*/))
+      {
+         if (fd1in->revents & POLLNVAL) {
+            /* this is what we find on Mac OS X when poll()'ing on a device or
+               named pipe. a read() might imm. return with 0 bytes, resulting
+               in a loop? */ 
+            Error1("poll(...[%d]: invalid request", fd1in->fd);
+            free(buff);
+            return -1;
+         }
+         mayrd1 = true;
       }
+
       if (XIO_READABLE(sock2) && XIO_GETRDFD(sock2) >= 0 &&
-	  (fd2in->revents)) {
-	 if (fd2in->revents & POLLNVAL) {
-	    Error1("poll(...[%d]: invalid request", fd2in->fd);
-		  free(buff);
-	    return -1;
-	 }
-	 mayrd2 = true;
+          (fd2in->revents))
+      {
+         if (fd2in->revents & POLLNVAL) {
+            Error1("poll(...[%d]: invalid request", fd2in->fd);
+            free(buff);
+            return -1;
+         }
+         mayrd2 = true;
       }
+
       if (XIO_GETWRFD(sock1) >= 0 && fd1out->fd >= 0 && fd1out->revents) {
 	 if (fd1out->revents & POLLNVAL) {
 	    Error1("poll(...[%d]: invalid request", fd1out->fd);
